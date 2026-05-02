@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>El Buen Sabor – Sistema POS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+ <link rel="stylesheet" href="css/style.css">
+<script src="js/app.js"></script>
+</head>
+<body>
+
+  <!-- ════════════════════════════════
+       HEADER / NAVBAR
+  ════════════════════════════════ -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="brand-icon">🍔</div>
+      <div class="brand-text">
+        <span class="brand-name">El Buen Sabor</span>
+        <span class="brand-tagline">Sistema POS</span>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-btn active" data-tab="pos">
+        <span class="nav-icon">🛒</span>
+        <span>Pedidos</span>
+      </button>
+      <button class="nav-btn" data-tab="kitchen">
+        <span class="nav-icon">👨‍🍳</span>
+        <span>Cocina</span>
+        <span class="badge" id="kitchen-badge" style="display:none">0</span>
+      </button>
+      <button class="nav-btn" data-tab="sales">
+        <span class="nav-icon">📊</span>
+        <span>Ventas</span>
+      </button>
+    </nav>
+
+    <div class="header-time">
+      <span id="clock">00:00:00</span>
+      <span id="date-display"></span>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════
+       PANTALLA POS – TOMA DE PEDIDOS
+  ════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- ─── TAB: POS ─────────────────────────────── -->
+    <section id="tab-pos" class="tab-section active">
+      <div class="pos-layout">
+
+        <!-- Panel izquierdo: menú -->
+        <div class="menu-panel">
+          <!-- Categorías -->
+          <div class="category-filters">
+            <button class="cat-btn active" data-cat="all">Todo</button>
+            <button class="cat-btn" data-cat="burgers">🍔 Burgers</button>
+            <button class="cat-btn" data-cat="sides">🍟 Acompañamientos</button>
+            <button class="cat-btn" data-cat="drinks">🥤 Bebidas</button>
+          </div>
+
+          <!-- Grid de productos -->
+          <div class="products-grid" id="products-grid">
+            <!-- Generado por JS -->
+          </div>
+        </div>
+
+        <!-- Panel derecho: orden actual -->
+        <div class="order-panel">
+          <div class="order-header">
+            <h2>Orden Actual</h2>
+            <button class="btn-clear" id="btn-clear-order" title="Limpiar orden">🗑 Limpiar</button>
+          </div>
+
+          <!-- Número de pedido y cliente -->
+          <div class="order-meta">
+            <div class="order-meta-field">
+              <label>N° Pedido</label>
+              <span id="order-number">#001</span>
+            </div>
+            <div class="order-meta-field">
+              <label>Cliente</label>
+              <input type="text" id="customer-name" placeholder="Nombre (opcional)" maxlength="30" />
+            </div>
+          </div>
+
+          <!-- Lista de items -->
+          <div class="order-items" id="order-items">
+            <div class="empty-order" id="empty-order-msg">
+              <div class="empty-icon">🛒</div>
+              <p>Agrega productos para comenzar</p>
+            </div>
+          </div>
+
+          <!-- Totales -->
+          <div class="order-totals">
+            <div class="total-row subtotal">
+              <span>Subtotal</span>
+              <span id="subtotal">S/ 0.00</span>
+            </div>
+            <div class="total-row tax">
+              <span>IGV (18%)</span>
+              <span id="tax">S/ 0.00</span>
+            </div>
+            <div class="total-row grand-total">
+              <span>TOTAL</span>
+              <span id="grand-total">S/ 0.00</span>
+            </div>
+          </div>
+
+          <!-- Acciones -->
+          <div class="order-actions">
+            <button class="btn-secondary" id="btn-preview">👁 Vista Previa</button>
+            <button class="btn-primary" id="btn-confirm">✅ Confirmar Pedido</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── TAB: COCINA ───────────────────────────── -->
+    <section id="tab-kitchen" class="tab-section">
+      <div class="kitchen-layout">
+        <div class="kitchen-header">
+          <h2 class="section-title">🧑‍🍳 Panel de Cocina</h2>
+          <p class="section-sub">Gestiona los pedidos en tiempo real</p>
+        </div>
+
+        <div class="kitchen-columns">
+          <div class="kitchen-col">
+            <div class="kitchen-col-header pending">
+              <span>⏳ En Espera</span>
+              <span class="col-count" id="pending-count">0</span>
+            </div>
+            <div class="kitchen-orders" id="pending-orders">
+              <div class="kitchen-empty">No hay pedidos pendientes</div>
+            </div>
+          </div>
+
+          <div class="kitchen-col">
+            <div class="kitchen-col-header preparing">
+              <span>🔥 En Preparación</span>
+              <span class="col-count" id="preparing-count">0</span>
+            </div>
+            <div class="kitchen-orders" id="preparing-orders">
+              <div class="kitchen-empty">No hay pedidos en preparación</div>
+            </div>
+          </div>
+
+          <div class="kitchen-col">
+            <div class="kitchen-col-header ready">
+              <span>✅ Listo para Entregar</span>
+              <span class="col-count" id="ready-count">0</span>
+            </div>
+            <div class="kitchen-orders" id="ready-orders">
+              <div class="kitchen-empty">No hay pedidos listos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── TAB: VENTAS ───────────────────────────── -->
+    <section id="tab-sales" class="tab-section">
+      <div class="sales-layout">
+        <div class="sales-header">
+          <h2 class="section-title">📊 Registro de Ventas</h2>
+          <p class="section-sub">Historial del día de hoy</p>
+        </div>
+
+        <!-- Tarjetas resumen -->
+        <div class="sales-summary">
+          <div class="summary-card">
+            <div class="summary-icon">🧾</div>
+            <div class="summary-info">
+              <span class="summary-label">Pedidos del Día</span>
+              <span class="summary-value" id="total-orders">0</span>
+            </div>
+          </div>
+          <div class="summary-card highlight">
+            <div class="summary-icon">💰</div>
+            <div class="summary-info">
+              <span class="summary-label">Total Vendido</span>
+              <span class="summary-value" id="total-revenue">S/ 0.00</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">🍔</div>
+            <div class="summary-info">
+              <span class="summary-label">Producto Estrella</span>
+              <span class="summary-value" id="top-product">–</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de ventas -->
+        <div class="sales-table-wrapper">
+          <table class="sales-table" id="sales-table">
+            <thead>
+              <tr>
+                <th>N° Pedido</th>
+                <th>Cliente</th>
+                <th>Hora</th>
+                <th>Productos</th>
+                <th>Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="sales-tbody">
+              <tr>
+                <td colspan="6" class="no-sales">No hay ventas registradas hoy</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sales-footer">
+          <button class="btn-danger" id="btn-clear-sales">🗑 Limpiar Historial del Día</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ════════════════════════════════
+       MODAL: CONFIRMACIÓN DE PEDIDO
+  ════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-confirm" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Confirmar Pedido</h3>
+        <button class="modal-close" data-modal="modal-confirm">✕</button>
+      </div>
+      <div class="modal-body" id="modal-confirm-body">
+        <!-- Generado por JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-confirm">Cancelar</button>
+        <button class="btn-primary" id="btn-place-order">🚀 Enviar a Cocina</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       MODAL: BOLETA DIGITAL
+  ════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-receipt" style="display:none">
+    <div class="modal modal-receipt">
+      <div class="modal-header">
+        <h3>Boleta Digital</h3>
+        <button class="modal-close" data-modal="modal-receipt">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="receipt" id="receipt-content">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-print-receipt">🖨 Imprimir</button>
+        <button class="btn-primary" data-modal="modal-receipt">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       MODAL: VISTA PREVIA DE BOLETA
+  ════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-preview" style="display:none">
+    <div class="modal modal-receipt">
+      <div class="modal-header">
+        <h3>Vista Previa</h3>
+        <button class="modal-close" data-modal="modal-preview">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="receipt" id="preview-content">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" data-modal="modal-preview">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

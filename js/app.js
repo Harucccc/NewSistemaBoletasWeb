@@ -523,3 +523,306 @@ function openConfirmModal() {
 
     openModal('modal-confirm');
 }
+
+/* ════════════════════════════════
+   MÓDULO: COLOCAR PEDIDO (POS → Cocina → Registro)
+════════════════════════════════ */
+function placeOrder() {
+    if (state.currentOrder.length === 0) return;
+
+    const { subtotal, tax, total } = calcTotals();
+    const customer = document.getElementById('customer-name').value.trim();
+
+    const order = {
+        id: genOrderId(),
+        customer: customer || 'Anónimo',
+        items: state.currentOrder.map(i => ({ ...i })), // copia profunda de los items
+        subtotal,
+        tax,
+        total,
+        timestamp: Date.now(),
+        status: 'pending',   // pending | preparing | ready | delivered
+    };
+
+    // Guardar en estado y localStorage
+    state.allOrders.push(order);
+    Storage.save(state.allOrders);
+
+    closeModal('modal-confirm');
+
+    // Mostrar boleta
+    document.getElementById('receipt-content').innerHTML = buildReceiptHTML(order);
+    openModal('modal-receipt');
+
+    // Actualizar badge de cocina
+    updateKitchenBadge();
+
+    // Actualizar número de pedido en UI
+    state.orderNumber++;
+    document.getElementById('order-number').textContent = `#${String(state.orderNumber).padStart(3, '0')}`;
+
+    // Limpiar formulario
+    clearOrder();
+    document.getElementById('customer-name').value = '';
+
+    showToast(`Pedido ${order.id} enviado a cocina 🚀`, 'success', 3000);
+}
+
+/* ════════════════════════════════
+   MÓDULO: COCINA
+════════════════════════════════ */
+
+/** Renderiza las 3 columnas de cocina */
+function renderKitchen() {
+    const today = new Date().toDateString();
+    const orders = state.allOrders.filter(o =>
+        new Date(o.timestamp).toDateString() === today &&
+        o.status !== 'delivered'
+    );
+
+    const pending = orders.filter(o => o.status === 'pending');
+    const preparing = orders.filter(o => o.status === 'preparing');
+    const ready = orders.filter(o => o.status === 'ready');
+
+    renderKitchenCol('pending-orders', pending, 'pending');
+    renderKitchenCol('preparing-orders', preparing, 'preparing');
+    renderKitchenCol('ready-orders', ready, 'ready');
+
+    document.getElementById('pending-count').textContent = pending.length;
+    document.getElementById('preparing-count').textContent = preparing.length;
+    document.getElementById('ready-count').textContent = ready.length;
+
+    updateKitchenBadge();
+}
+
+function renderKitchenCol(containerId, orders, status) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    if (orders.length === 0) {
+        container.innerHTML = '<div class="kitchen-empty">Sin pedidos</div>';
+        return;
+    }
+
+    orders.forEach(order => {
+        const card = document.createElement('div');
+        card.className = `kitchen-card status-${status}`;
+        card.id = `kcard-${order.id}`;
+
+        const itemsList = order.items
+            .map(i => `<li>${i.qty}× ${i.product.name}</li>`)
+            .join('');
+
+        let actionBtn = '';
+        if (status === 'pending') {
+            actionBtn = `<button class="btn-kitchen-action start" data-id="${order.id}" data-action="preparing">🔥 Iniciar Preparación</button>`;
+        } else if (status === 'preparing') {
+            actionBtn = `<button class="btn-kitchen-action ready" data-id="${order.id}" data-action="ready">✅ Marcar como Listo</button>`;
+        } else if (status === 'ready') {
+            actionBtn = `<button class="btn-kitchen-action deliver" data-id="${order.id}" data-action="delivered">📦 Entregar</button>`;
+        }
+
+        card.innerHTML = `
+      <div class="kitchen-card-header">
+        <span class="kitchen-order-id">${order.id}</span>
+        <span class="kitchen-time">${fmtTime(order.timestamp)}</span>
+      </div>
+      <div class="kitchen-customer">👤 ${order.customer}</div>
+      <ul class="kitchen-items">${itemsList}</ul>
+      ${actionBtn}
+    `;
+
+        container.appendChild(card);
+    });
+}
+
+/** Cambia estado de un pedido */
+function changeOrderStatus(orderId, newStatus) {
+    const order = state.allOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    order.status = newStatus;
+    Storage.save(state.allOrders);
+    renderKitchen();
+
+    // Refrescar tabla de ventas si está activa
+    if (state.activeTab === 'sales') renderSales();
+
+    const statusLabels = {
+        preparing: '🔥 En preparación',
+        ready: '✅ Listo para entregar',
+        delivered: '📦 Entregado',
+    };
+
+    showToast(`Pedido ${orderId}: ${statusLabels[newStatus]}`, 'info');
+}
+
+/** Badge con pedidos activos en cocina */
+function updateKitchenBadge() {
+    const today = new Date().toDateString();
+    const active = state.allOrders.filter(o =>
+        new Date(o.timestamp).toDateString() === today &&
+        ['pending', 'preparing'].includes(o.status)
+    ).length;
+
+    const badge = document.getElementById('kitchen-badge');
+    if (active > 0) {
+        badge.textContent = active;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+/* ════════════════════════════════
+   MÓDULO: VENTAS
+════════════════════════════════ */
+function renderSales() {
+    const today = new Date().toDateString();
+    const orders = state.allOrders.filter(o =>
+        new Date(o.timestamp).toDateString() === today
+    );
+
+    // Totales resumen
+    document.getElementById('total-orders').textContent = orders.length;
+    const revenue = orders.reduce((acc, o) => acc + o.total, 0);
+    document.getElementById('total-revenue').textContent = fmt(revenue);
+
+    // Producto más vendido
+    const productCount = {};
+    orders.forEach(o => {
+        o.items.forEach(({ product, qty }) => {
+            productCount[product.name] = (productCount[product.name] || 0) + qty;
+        });
+    });
+    const top = Object.entries(productCount).sort((a, b) => b[1] - a[1])[0];
+    document.getElementById('top-product').textContent = top ? top[0] : '–';
+
+    // Tabla
+    const tbody = document.getElementById('sales-tbody');
+    tbody.innerHTML = '';
+
+    if (orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-sales">No hay ventas registradas hoy</td></tr>';
+        return;
+    }
+
+    [...orders].reverse().forEach(order => {
+        const row = document.createElement('tr');
+        const productsText = order.items
+            .map(i => `${i.qty}× ${i.product.name}`)
+            .join(', ');
+
+        const statusLabels = {
+            pending: 'Pendiente',
+            preparing: 'Preparando',
+            ready: 'Listo',
+            delivered: 'Entregado',
+        };
+
+        row.innerHTML = `
+      <td><strong style="color:var(--orange)">${order.id}</strong></td>
+      <td>${order.customer}</td>
+      <td>${fmtTime(order.timestamp)}</td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${productsText}</td>
+      <td><strong style="color:var(--yellow);font-family:var(--font-display);font-size:16px">${fmt(order.total)}</strong></td>
+      <td><span class="status-pill ${order.status}">${statusLabels[order.status] || order.status}</span></td>
+    `;
+
+        tbody.appendChild(row);
+    });
+}
+
+/* ════════════════════════════════
+   MÓDULO: IMPRESIÓN DE BOLETA
+════════════════════════════════ */
+function printReceipt() {
+    const content = document.getElementById('receipt-content').innerHTML;
+    const win = window.open('', '_blank', 'width=400,height=600');
+    win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Boleta – El Buen Sabor</title>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+      <link rel="stylesheet" href="style.css">
+      <style>
+        body { background: white; display: flex; justify-content: center; padding: 20px; }
+        .receipt { max-width: 320px; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <div class="receipt">${content}</div>
+      <script>window.onload = () => { window.print(); }<\/script>
+    </body>
+    </html>
+  `);
+    win.document.close();
+}
+
+/* ════════════════════════════════
+   MÓDULO: EVENT LISTENERS
+════════════════════════════════ */
+function initEventListeners() {
+
+    // ─── Agregar producto desde grid ───────────────────
+    document.getElementById('products-grid').addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-add');
+        const card = e.target.closest('.product-card');
+        if (btn) {
+            addToOrder(btn.dataset.id);
+        } else if (card) {
+            // Click en la tarjeta también agrega
+            addToOrder(card.dataset.id);
+        }
+    });
+
+    // ─── Control de cantidades en la orden ─────────────
+    document.getElementById('order-items').addEventListener('click', (e) => {
+        const btn = e.target.closest('.qty-btn');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const delta = btn.classList.contains('plus') ? 1 : -1;
+        updateQty(id, delta);
+    });
+
+    // ─── Limpiar orden ──────────────────────────────────
+    document.getElementById('btn-clear-order').addEventListener('click', () => {
+        if (state.currentOrder.length === 0) return;
+        clearOrder();
+        showToast('Orden limpiada', 'info', 1500);
+    });
+
+    // ─── Vista previa ───────────────────────────────────
+    document.getElementById('btn-preview').addEventListener('click', openPreview);
+
+    // ─── Abrir modal de confirmación ────────────────────
+    document.getElementById('btn-confirm').addEventListener('click', openConfirmModal);
+
+    // ─── Confirmar y enviar pedido ──────────────────────
+    document.getElementById('btn-place-order').addEventListener('click', placeOrder);
+
+    // ─── Botones de cocina (delegación) ────────────────
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-kitchen-action');
+        if (!btn) return;
+        changeOrderStatus(btn.dataset.id, btn.dataset.action);
+    });
+
+    // ─── Imprimir boleta ────────────────────────────────
+    document.getElementById('btn-print-receipt').addEventListener('click', printReceipt);
+
+    // ─── Limpiar historial de ventas ────────────────────
+    document.getElementById('btn-clear-sales').addEventListener('click', () => {
+        if (!confirm('¿Seguro que deseas limpiar el historial de hoy?')) return;
+        state.allOrders = state.allOrders.filter(o =>
+            new Date(o.timestamp).toDateString() !== new Date().toDateString()
+        );
+        Storage.clearToday();
+        renderSales();
+        updateKitchenBadge();
+        showToast('Historial del día eliminado', 'warning');
+    });
+}

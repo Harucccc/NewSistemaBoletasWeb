@@ -1,0 +1,28 @@
+/* BASE */
+
+:root {
+  --dark: #1A1A2E;
+  --dark-2: #16213E;
+  --gray-1: #2D2D3A;
+  --gray-3: #5A5A6E;
+  --white: #FFFFFF;
+  --yellow: #FFB703;
+
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Nunito', sans-serif;
+
+  --header-h: 68px;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--dark);
+  color: var(--white);
+}

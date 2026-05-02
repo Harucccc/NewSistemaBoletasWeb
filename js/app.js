@@ -113,4 +113,4 @@ const PRODUCTS = [
     },
 ];
 
-const TAX_RATE = 0.18; // IGV Perú
+const TAX_RATE = 0.18; 

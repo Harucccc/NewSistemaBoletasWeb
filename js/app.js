@@ -261,3 +261,49 @@ function initTabs() {
     });
   });
 }
+
+/* ════════════════════════════════
+   MÓDULO: CATÁLOGO / MENÚ
+════════════════════════════════ */
+function renderProducts(category = 'all') {
+  const grid = document.getElementById('products-grid');
+  const filtered = category === 'all'
+    ? PRODUCTS
+    : PRODUCTS.filter(p => p.category === category);
+
+  grid.innerHTML = '';
+
+  filtered.forEach(product => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.dataset.id = product.id;
+    card.innerHTML = `
+      <div class="product-emoji">
+        ${product.emoji}
+        ${product.star ? '<span class="star-badge">⭐ Estrella</span>' : ''}
+      </div>
+      <div class="product-info">
+        <div class="product-name">${product.name}</div>
+        <div class="product-desc">${product.desc}</div>
+        <div class="product-footer">
+          <span class="product-price">${fmt(product.price)}</span>
+          <button class="btn-add" data-id="${product.id}" title="Agregar">+</button>
+        </div>
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+function initCategoryFilters() {
+  const catBtns = document.querySelectorAll('.cat-btn');
+  catBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeCategory = btn.dataset.cat;
+      renderProducts(state.activeCategory);
+    });
+  });
+}

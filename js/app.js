@@ -826,3 +826,40 @@ function initEventListeners() {
         showToast('Historial del día eliminado', 'warning');
     });
 }
+
+/* ════════════════════════════════
+   INICIALIZACIÓN PRINCIPAL
+════════════════════════════════ */
+function init() {
+    // Cargar ventas persistidas
+    state.allOrders = Storage.load();
+
+    // Calcular el siguiente número de pedido
+    if (state.allOrders.length > 0) {
+        const maxNum = state.allOrders.reduce((max, o) => {
+            const num = parseInt(o.id.replace('#', '')) || 0;
+            return Math.max(max, num);
+        }, 0);
+        state.orderNumber = maxNum + 1;
+    }
+
+    // Actualizar número en UI
+    document.getElementById('order-number').textContent =
+        `#${String(state.orderNumber).padStart(3, '0')}`;
+
+    // Inicializar módulos
+    startClock();
+    initTabs();
+    initCategoryFilters();
+    renderProducts('all');
+    renderOrderItems();
+    updateOrderTotals();
+    initModalCloses();
+    initEventListeners();
+    updateKitchenBadge();
+
+    console.log('🍔 El Buen Sabor POS – Sistema iniciado correctamente');
+}
+
+// Arrancar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', init);

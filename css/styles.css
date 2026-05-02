@@ -62,3 +62,40 @@ body {
 .nav-btn.active {
   color: white;
 }
+
+/* layout */
+.main-content {
+  margin-top: var(--header-h);
+}
+
+.pos-layout {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+}
+
+.menu-panel {
+  padding: 20px;
+}
+
+.order-panel {
+  background: var(--dark-2);
+  padding: 20px;
+}
+ /*productos y trajetas*/
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.product-card {
+  background: var(--gray-1);
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.product-card:hover {
+  transform: scale(1.05);
+}

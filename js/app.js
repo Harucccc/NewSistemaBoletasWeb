@@ -171,3 +171,93 @@ const Storage = {
     }
   },
 };
+
+/* ════════════════════════════════
+   MÓDULO: HELPERS
+════════════════════════════════ */
+const fmt = (n) => `S/ ${n.toFixed(2)}`;
+const fmtTime = (ts) => {
+  const d = new Date(ts);
+  return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+};
+
+/** Genera un ID único de pedido */
+function genOrderId() {
+  const id = state.orderNumber;
+  state.orderNumber++;
+  return `#${String(id).padStart(3, '0')}`;
+}
+
+/** Calcula subtotal, IGV y total de la orden actual */
+function calcTotals() {
+  const subtotal = state.currentOrder.reduce((acc, { product, qty }) => acc + product.price * qty, 0);
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + tax;
+  return { subtotal, tax, total };
+}
+
+/** Devuelve producto por id */
+function getProduct(id) {
+  return PRODUCTS.find(p => p.id === id);
+}
+
+/* ════════════════════════════════
+   MÓDULO: TOAST
+════════════════════════════════ */
+function showToast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('out');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+/* ════════════════════════════════
+   MÓDULO: RELOJ
+════════════════════════════════ */
+function startClock() {
+  const clockEl = document.getElementById('clock');
+  const dateEl  = document.getElementById('date-display');
+
+  function tick() {
+    const now = new Date();
+    clockEl.textContent = now.toLocaleTimeString('es-PE');
+    dateEl.textContent  = now.toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short' });
+  }
+
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ════════════════════════════════
+   MÓDULO: TABS
+════════════════════════════════ */
+function initTabs() {
+  const navBtns   = document.querySelectorAll('.nav-btn');
+  const tabSects  = document.querySelectorAll('.tab-section');
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      state.activeTab = tab;
+
+      navBtns.forEach(b => b.classList.remove('active'));
+      tabSects.forEach(s => s.classList.remove('active'));
+
+      btn.classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+
+      // Refrescar vistas al cambiar de tab
+      if (tab === 'kitchen') renderKitchen();
+      if (tab === 'sales')   renderSales();
+    });
+  });
+}

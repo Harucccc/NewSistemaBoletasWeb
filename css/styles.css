@@ -99,3 +99,23 @@ body {
 .product-card:hover {
   transform: scale(1.05);
 }
+/*botones y detaller*/
+.btn-primary {
+  background: #E63946;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+.order-header h2 {
+  color: #FFB703;
+}
+
+.order-items {
+  margin-top: 10px;
+}   

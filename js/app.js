@@ -114,3 +114,60 @@ const PRODUCTS = [
 ];
 
 const TAX_RATE = 0.18; 
+
+/* ════════════════════════════════
+   MÓDULO: ESTADO (State)
+════════════════════════════════ */
+const state = {
+  currentOrder: [],       // { product, qty }[]
+  orderNumber: 1,         // Contador auto-incremental
+  allOrders: [],          // Todos los pedidos del día (también en localStorage)
+  activeTab: 'pos',       // tab activo
+  activeCategory: 'all',  // filtro de categoría activo
+};
+
+/* ════════════════════════════════
+   MÓDULO: PERSISTENCIA (localStorage)
+════════════════════════════════ */
+const Storage = {
+  KEY: 'elbuensabor_orders',
+
+  /** Carga pedidos del día desde localStorage */
+  load() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      // Filtra solo los pedidos de hoy
+      const today = new Date().toDateString();
+      return parsed.filter(o => new Date(o.timestamp).toDateString() === today);
+    } catch (e) {
+      console.error('Error cargando ventas:', e);
+      return [];
+    }
+  },
+
+  /** Guarda todos los pedidos */
+  save(orders) {
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(orders));
+    } catch (e) {
+      console.error('Error guardando ventas:', e);
+    }
+  },
+
+  /** Limpia pedidos del día */
+  clearToday() {
+    const today = new Date().toDateString();
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return;
+      const all = JSON.parse(raw).filter(
+        o => new Date(o.timestamp).toDateString() !== today
+      );
+      localStorage.setItem(this.KEY, JSON.stringify(all));
+    } catch (e) {
+      console.error('Error limpiando ventas:', e);
+    }
+  },
+};

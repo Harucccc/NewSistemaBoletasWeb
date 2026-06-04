@@ -14,7 +14,7 @@ const PRODUCTS = [
     // ─── Hamburguesas ───────────────────────────────────
     {
         id: 'royal',
-        name: 'Hamburguesa Royal',
+        name: 'Hamburguesa Royal Deluxe',
         desc: 'Carne a la parrilla + huevo frito, lechuga, tomate y salsa especial',
         emoji: '🍔',
         price: 12.50,

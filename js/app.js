@@ -30,6 +30,16 @@ const PRODUCTS = [
     category: 'burgers',
     star: true,
 },
+   
+{
+    id: 'inca_kola',
+    name: 'Inca Kola',
+    desc: 'Bebida gaseosa 500ml',
+    emoji: '🥤',
+    price: 4.50,
+    category: 'drinks',
+},
+
     {
         id: 'classic',
         name: 'Hamburguesa Clásica',

@@ -22,6 +22,15 @@ const PRODUCTS = [
         star: true,
     },
     {
+    id: 'bacon_suprema',
+    name: 'Hamburguesa Bacon Suprema',
+    desc: 'Doble carne, queso cheddar, tocino crocante, lechuga y salsa BBQ',
+    emoji: '🍔',
+    price: 16.90,
+    category: 'burgers',
+    star: true,
+},
+    {
         id: 'classic',
         name: 'Hamburguesa Clásica',
         desc: 'Carne jugosa, lechuga, tomate y mostaza',

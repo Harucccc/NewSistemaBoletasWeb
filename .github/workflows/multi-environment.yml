@@ -1,0 +1,70 @@
+name: 🔄 CI/CD Multi-Entorno – IEP Ernest Hemingway
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/*'
+
+jobs:
+  deploy-testing:
+    name: 🧪 Despliegue – Entorno TESTING
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ejecutar pruebas funcionales
+        run: |
+          [ -f index.html ] && echo "index.html presente"
+          [ -f css/styles.css ] && echo "styles.css presente"
+          [ -f js/app.js ] && echo "app.js presente"
+          node --check js/app.js && echo "JS valido"
+
+      - name: Resumen de testing
+        run: |
+          echo "## Despliegue Testing" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rama:** develop" >> $GITHUB_STEP_SUMMARY
+          echo "- **Autor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fecha:** $(date '+%d/%m/%Y %H:%M')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Estado:** Testing listo" >> $GITHUB_STEP_SUMMARY
+
+      - name: Subir artefacto de testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-testing-${{ github.sha }}
+          path: |
+            index.html
+            css/
+            js/
+          retention-days: 7
+
+  deploy-production:
+    name: 🚀 Despliegue – PRODUCCIÓN
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validación final
+        run: |
+          node --check js/app.js && echo "JS valido para produccion"
+          COUNT=$(grep -c "console\.log" js/app.js || true)
+          echo "console.log encontrados: $COUNT"
+
+      - name: Desplegar a GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          commit_message: "Deploy ${{ github.sha }} por ${{ github.actor }}"
+
+      - name: Resumen produccion
+        run: |
+          echo "## PRODUCCION Desplegada" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Autor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fecha | $(date '+%d/%m/%Y %H:%M') |" >> $GITHUB_STEP_SUMMARY

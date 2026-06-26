@@ -1,0 +1,62 @@
+name: 🚀 Pipeline de Rendimiento – IEP Ernest Hemingway
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 12 * * *'
+
+jobs:
+  validate-markup:
+    name: 🔍 Validar HTML y CSS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar sintaxis CSS básica
+        run: |
+          node -e "
+            const fs = require('fs');
+            const css = fs.readFileSync('css/styles.css', 'utf8');
+            const opens = (css.match(/{/g) || []).length;
+            const closes = (css.match(/}/g) || []).length;
+            if (opens !== closes) {
+              console.error('ERROR: Llaves CSS desbalanceadas');
+              process.exit(1);
+            }
+            console.log('CSS valido: ' + opens + ' bloques correctos');
+          "
+
+      - name: Verificar JS sin errores de sintaxis
+        run: |
+          node --check js/app.js && echo "app.js sin errores de sintaxis"
+
+  bundle-size:
+    name: 📦 Análisis de Tamaño de Assets
+    runs-on: ubuntu-latest
+    needs: validate-markup
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Medir tamaño de archivos
+        run: |
+          echo "## Reporte de Tamaño de Assets" >> $GITHUB_STEP_SUMMARY
+          echo "| Archivo | Tamaño |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          for f in index.html css/styles.css js/app.js; do
+            SIZE=$(wc -c < $f)
+            SIZE_KB=$(echo "scale=2; $SIZE/1024" | bc)
+            echo "| $f | ${SIZE_KB} KB |" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Alertar si JS supera 500KB
+        run: |
+          JS_SIZE=$(wc -c < js/app.js)
+          if [ $JS_SIZE -gt 512000 ]; then
+            echo "ADVERTENCIA: app.js supera 500KB"
+            exit 1
+          else
+            echo "app.js dentro del limite: $JS_SIZE bytes"
+          fi

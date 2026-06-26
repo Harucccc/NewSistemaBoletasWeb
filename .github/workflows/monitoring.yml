@@ -1,0 +1,68 @@
+name: 📡 Monitoreo Post-Despliegue – IEP Ernest Hemingway
+
+on:
+  workflow_run:
+    workflows: ["🔄 CI/CD Multi-Entorno – IEP Ernest Hemingway"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+env:
+  PROD_URL: https://harucccc.github.io/NewSistemaBoletasWeb
+
+jobs:
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    outputs:
+      status_code: ${{ steps.check.outputs.status_code }}
+      response_time: ${{ steps.check.outputs.response_time }}
+      is_up: ${{ steps.check.outputs.is_up }}
+    steps:
+      - name: Verificar disponibilidad
+        id: check
+        run: |
+          START=$(date +%s%3N)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --connect-timeout 10 --max-time 30 \
+            "${{ env.PROD_URL }}" || echo "000")
+          END=$(date +%s%3N)
+          RESPONSE_TIME=$((END - START))
+          echo "status_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "response_time=$RESPONSE_TIME" >> $GITHUB_OUTPUT
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "is_up=true" >> $GITHUB_OUTPUT
+            echo "Sitio DISPONIBLE - HTTP $HTTP_CODE en ${RESPONSE_TIME}ms"
+          else
+            echo "is_up=false" >> $GITHUB_OUTPUT
+            echo "Sitio NO DISPONIBLE - HTTP $HTTP_CODE"
+          fi
+
+  monitoring-report:
+    name: 📊 Reporte de Monitoreo
+    runs-on: ubuntu-latest
+    needs: health-check
+    if: always()
+    steps:
+      - name: Publicar resumen
+        run: |
+          IS_UP="${{ needs.health-check.outputs.is_up }}"
+          STATUS_CODE="${{ needs.health-check.outputs.status_code }}"
+          RESPONSE_TIME="${{ needs.health-check.outputs.response_time }}"
+          echo "## Monitoreo Post-Despliegue" >> $GITHUB_STEP_SUMMARY
+          echo "| Metrica | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Estado | $([ "$IS_UP" = "true" ] && echo "EN LINEA" || echo "FUERA DE LINEA") |" >> $GITHUB_STEP_SUMMARY
+          echo "| HTTP Status | $STATUS_CODE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tiempo respuesta | ${RESPONSE_TIME}ms |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fecha | $(date '+%d/%m/%Y %H:%M') |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | ${{ env.PROD_URL }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Alerta si esta caido
+        if: needs.health-check.outputs.is_up == 'false'
+        run: |
+          echo "ALERTA: El sistema esta fuera de linea"
+          echo "URL: ${{ env.PROD_URL }}"
+          exit 1

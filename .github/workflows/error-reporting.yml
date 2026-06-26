@@ -1,0 +1,84 @@
+name: 📋 Reporte Automático de Errores – IEP Ernest Hemingway
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  error-analysis:
+    name: 🔎 Análisis y Reporte de Errores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar ESLint
+        run: |
+          npm init -y > /dev/null 2>&1
+          npm install --save-dev eslint@8 > /dev/null 2>&1
+
+      - name: Crear configuracion ESLint
+        run: |
+          cat > .eslintrc.json << 'ESLINT'
+          {
+            "env": { "browser": true, "es2021": true },
+            "rules": {
+              "no-unused-vars": "warn",
+              "no-undef": "error",
+              "no-console": "warn",
+              "eqeqeq": "error",
+              "no-eval": "error"
+            },
+            "globals": {
+              "localStorage": "readonly",
+              "document": "readonly",
+              "window": "readonly",
+              "console": "readonly",
+              "setTimeout": "readonly",
+              "setInterval": "readonly",
+              "clearInterval": "readonly",
+              "fetch": "readonly",
+              "alert": "readonly"
+            }
+          }
+          ESLINT
+
+      - name: Ejecutar ESLint
+        run: |
+          mkdir -p reports
+          npx eslint js/app.js --format json --output-file reports/eslint-report.json || true
+          ERRORS=$(node -e "
+            const r=require('./reports/eslint-report.json');
+            console.log(r.reduce((a,f)=>a+f.errorCount,0));
+          " 2>/dev/null || echo "0")
+          WARNINGS=$(node -e "
+            const r=require('./reports/eslint-report.json');
+            console.log(r.reduce((a,f)=>a+f.warningCount,0));
+          " 2>/dev/null || echo "0")
+          echo "ESLINT_ERRORS=$ERRORS" >> $GITHUB_ENV
+          echo "ESLINT_WARNINGS=$WARNINGS" >> $GITHUB_ENV
+          echo "Errores: $ERRORS | Advertencias: $WARNINGS"
+
+      - name: Publicar resumen
+        run: |
+          echo "## Reporte de Errores" >> $GITHUB_STEP_SUMMARY
+          echo "| Metrica | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Errores ESLint | ${{ env.ESLINT_ERRORS }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Advertencias | ${{ env.ESLINT_WARNINGS }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Autor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fecha | $(date '+%d/%m/%Y %H:%M') |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Subir reporte
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-report-${{ github.sha }}
+          path: reports/
+          retention-days: 30

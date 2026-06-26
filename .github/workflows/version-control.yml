@@ -1,0 +1,87 @@
+name: 🔒 Control de Versiones – IEP Ernest Hemingway
+
+on:
+  push:
+    branches: [main, develop, 'release/*', 'hotfix/*']
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-commit-message:
+    name: 📝 Validar Mensaje de Commit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+
+      - name: Verificar convencion de commits
+        run: |
+          git log --format="%H %s" -5 | while IFS=' ' read -r hash message; do
+            echo "Commit: ${hash:0:7} - $message"
+            PATTERN='^(feat|fix|docs|style|refactor|test|chore|hotfix|perf|ci)(\([a-zA-Z0-9_-]+\))?: .{3,72}$'
+            if echo "$message" | grep -qE "$PATTERN"; then
+              echo "  Formato valido"
+            else
+              echo "  ADVERTENCIA: No sigue la convencion de commits"
+              echo "  Formato esperado: tipo(scope): descripcion"
+            fi
+          done
+
+  version-management:
+    name: 🏷️ Gestión de Versiones
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular nueva version
+        run: |
+          LAST_TAG=$(git tag --sort=-v:refname | head -1 || echo "v0.0.0")
+          VERSION="${LAST_TAG#v}"
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          COMMITS=$(git log ${LAST_TAG}..HEAD --format="%s" 2>/dev/null || git log --format="%s" -5)
+          if echo "$COMMITS" | grep -qE "^feat"; then
+            MINOR=$((MINOR + 1)); PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Nueva version: $NEW_VERSION"
+
+      - name: Crear tag y actualizar CHANGELOG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          DATE="$(date '+%d/%m/%Y')"
+          LAST_TAG=$(git tag --sort=-v:refname | head -1 || echo "")
+          COMMITS=$(git log ${LAST_TAG}..HEAD --format="- %s (%h)" 2>/dev/null || echo "- Cambios iniciales")
+          echo "# Changelog" > CHANGELOG_NEW.md
+          echo "" >> CHANGELOG_NEW.md
+          echo "## ${{ env.NEW_VERSION }} – $DATE" >> CHANGELOG_NEW.md
+          echo "" >> CHANGELOG_NEW.md
+          echo "$COMMITS" >> CHANGELOG_NEW.md
+          echo "" >> CHANGELOG_NEW.md
+          if [ -f CHANGELOG.md ]; then
+            tail -n +2 CHANGELOG.md >> CHANGELOG_NEW.md
+          fi
+          mv CHANGELOG_NEW.md CHANGELOG.md
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore: actualizar CHANGELOG para ${{ env.NEW_VERSION }} [skip ci]"
+          git tag -a "${{ env.NEW_VERSION }}" -m "Release ${{ env.NEW_VERSION }} por ${{ github.actor }}"
+          git push origin HEAD:main --tags
+
+      - name: Resumen de version
+        run: |
+          echo "## Nueva Version: ${{ env.NEW_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Desplegado por: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Fecha: $(date '+%d/%m/%Y %H:%M')" >> $GITHUB_STEP_SUMMARY
